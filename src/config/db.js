@@ -1,8 +1,7 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 
-// Set DNS servers to Google Public DNS to reliably resolve SRV records on Windows
+// Set Google Public DNS for reliable SRV record resolution across environments
 try {
   dns.setServers(['8.8.8.8', '8.8.4.4']);
 } catch (e) {
@@ -12,7 +11,7 @@ try {
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
-    console.log(`Connecting to MongoDB Atlas at: ${mongoUri.replace(/:([^@]+)@/, ':****@')}`);
+    console.log(`Connecting to MongoDB Atlas at: ${mongoUri ? mongoUri.replace(/:([^@]+)@/, ':****@') : 'undefined'}`);
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 15000
     });
@@ -20,6 +19,8 @@ const connectDB = async () => {
   } catch (error) {
     console.warn(`MongoDB Atlas connection error: ${error.message}. Launching MongoDB Memory Server fallback...`);
     try {
+      // Lazy load MongoMemoryServer only in fallback
+      const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongod = await MongoMemoryServer.create();
       const memoryUri = mongod.getUri();
       await mongoose.connect(memoryUri);
