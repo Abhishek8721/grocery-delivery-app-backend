@@ -1,25 +1,36 @@
 const mongoose = require('mongoose');
-const dns = require('dns');
 
-// Set Google Public DNS for reliable SRV record resolution across environments
+// Attempt to set DNS servers safely if supported
 try {
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
+  const dns = require('dns');
+  if (typeof dns.setServers === 'function') {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+  }
 } catch (e) {
-  // Ignore if unsupported
+  // Ignore DNS override errors in restricted container environments
 }
 
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
-    console.log(`Connecting to MongoDB Atlas at: ${mongoUri ? mongoUri.replace(/:([^@]+)@/, ':****@') : 'undefined'}`);
-    await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 15000
-    });
-    console.log('✅ MongoDB Atlas connected successfully!');
+    if (!mongoUri) {
+      console.warn('⚠️ MONGODB_URI is not defined in environment variables.');
+    } else {
+      console.log(`Connecting to MongoDB Atlas at: ${mongoUri.replace(/:([^@]+)@/, ':****@')}`);
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000
+      });
+      console.log('✅ MongoDB Atlas connected successfully!');
+      return;
+    }
   } catch (error) {
-    console.warn(`MongoDB Atlas connection error: ${error.message}. Launching MongoDB Memory Server fallback...`);
+    console.warn(`MongoDB Atlas connection error: ${error.message}.`);
+  }
+
+  // Fallback to MongoMemoryServer only in non-production environments
+  if (process.env.NODE_ENV !== 'production') {
     try {
-      // Lazy load MongoMemoryServer only in fallback
+      console.log('Launching MongoDB Memory Server fallback for local dev...');
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongod = await MongoMemoryServer.create();
       const memoryUri = mongod.getUri();
@@ -27,9 +38,11 @@ const connectDB = async () => {
       console.log(`Connected to MongoMemoryServer fallback at: ${memoryUri}`);
     } catch (memErr) {
       console.error('Failed to initialize MongoDB Memory Server:', memErr.message);
-      process.exit(1);
     }
+  } else {
+    console.error('❌ Database connection unavailable. Server running in degraded mode.');
   }
 };
 
 module.exports = connectDB;
+
