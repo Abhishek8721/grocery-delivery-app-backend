@@ -32,6 +32,14 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid delivery address is required.' });
     }
 
+    // Ensure customer name and contact phone are populated from logged in user if missing or default fallback
+    if (!deliveryAddress.name || deliveryAddress.name === 'John Doe') {
+      deliveryAddress.name = req.user.name || deliveryAddress.name || 'Customer';
+    }
+    if (!deliveryAddress.phone || deliveryAddress.phone === '+91 98765 43210') {
+      deliveryAddress.phone = req.user.phone || deliveryAddress.phone || '';
+    }
+
     const cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId');
     if (!cart || !cart.items || cart.items.length === 0) {
       return res.status(400).json({ success: false, message: 'Your cart is empty.' });
