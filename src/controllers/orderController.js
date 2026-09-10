@@ -23,7 +23,9 @@ const createOrder = async (req, res) => {
           state: savedAddress.state,
           pincode: savedAddress.pincode,
           landmark: savedAddress.landmark,
-          type: savedAddress.type
+          type: savedAddress.type,
+          latitude: savedAddress.latitude || 0,
+          longitude: savedAddress.longitude || 0
         };
       }
     }
@@ -38,6 +40,35 @@ const createOrder = async (req, res) => {
     }
     if (!deliveryAddress.phone || deliveryAddress.phone === '+91 98765 43210') {
       deliveryAddress.phone = req.user.phone || deliveryAddress.phone || '';
+    }
+
+    // Auto-save delivery address to saved addresses table if not already saved
+    try {
+      const existingAddress = await Address.findOne({
+        userId: req.user.id,
+        house: deliveryAddress.house,
+        pincode: deliveryAddress.pincode
+      });
+      if (!existingAddress) {
+        await Address.create({
+          userId: req.user.id,
+          name: deliveryAddress.name,
+          phone: deliveryAddress.phone,
+          house: deliveryAddress.house,
+          street: deliveryAddress.street || '',
+          area: deliveryAddress.area || '',
+          city: deliveryAddress.city || '',
+          state: deliveryAddress.state || '',
+          pincode: deliveryAddress.pincode || '',
+          landmark: deliveryAddress.landmark || '',
+          type: deliveryAddress.type || 'Home',
+          latitude: deliveryAddress.latitude || 0,
+          longitude: deliveryAddress.longitude || 0,
+          isDefault: true
+        });
+      }
+    } catch (saveAddrErr) {
+      console.error('Error auto-saving checkout address:', saveAddrErr);
     }
 
     const cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId');

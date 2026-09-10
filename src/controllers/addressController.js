@@ -11,10 +11,14 @@ const getAddresses = async (req, res) => {
 
 const createAddress = async (req, res) => {
   try {
-    const { name, phone, house, street, area, city, state, pincode, landmark, type } = req.body;
+    const { name, phone, house, street, area, city, state, pincode, landmark, type, latitude, longitude, isDefault } = req.body;
 
     if (!name || !phone || !house || !street || !area || !city || !state || !pincode) {
       return res.status(400).json({ success: false, message: 'Please provide all required address fields.' });
+    }
+
+    if (isDefault) {
+      await Address.updateMany({ userId: req.user.id }, { isDefault: false });
     }
 
     const address = await Address.create({
@@ -28,7 +32,10 @@ const createAddress = async (req, res) => {
       state,
       pincode,
       landmark: landmark || '',
-      type: type || 'Home'
+      type: type || 'Home',
+      latitude: latitude || 0,
+      longitude: longitude || 0,
+      isDefault: isDefault || false
     });
 
     return res.status(201).json({

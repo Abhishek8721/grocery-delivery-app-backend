@@ -23,7 +23,9 @@ const orderSchema = new mongoose.Schema({
     state: { type: String, required: true },
     pincode: { type: String, required: true },
     landmark: { type: String, default: '' },
-    type: { type: String, default: 'Home' }
+    type: { type: String, default: 'Home' },
+    latitude: { type: Number, default: 0 },
+    longitude: { type: Number, default: 0 }
   },
   subtotal: { type: Number, required: true, min: 0 },
   deliveryFee: { type: Number, default: 0 },
